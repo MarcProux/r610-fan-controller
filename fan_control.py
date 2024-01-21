@@ -81,10 +81,10 @@ class Config():
 
         self.hosts = config[ "hosts" ]
         for host in self.hosts:
-            # Hysterisis
-            if "hysterisis" not in list( host.keys() ):
-                host[ "hysterisis" ] = 0
-                log.pwarn( "hysterisis not defined... setting it to 0°C" )
+            # Hysteresis
+            if "hysteresis" not in list( host.keys() ):
+                host[ "hysteresis" ] = 0
+                log.pwarn( "hysteresis not defined... setting it to 0°C" )
 
             # Temperature and speed
             if "threshold" not in list( host.keys() ):
@@ -162,11 +162,11 @@ class FanControl:
             for t in self.cfg_host[ "threshold" ]:
                 curr_threshold = t[ "temperature" ]
 
-                # Check hysterisis
+                # Check hysteresis
                 hysteresis_ok = True
-                if self.cfg_host[ "hysterisis" ]:
+                if self.cfg_host[ "hysteresis" ]:
                     if ( self.state[ "speed" ] > t[ "speed" ] or self.state[ "mode" ] == "automatic" ):
-                        hysteresis_ok = ( temp_average <= ( curr_threshold - self.cfg_host[ "hysterisis" ] ) )
+                        hysteresis_ok = ( temp_average <= ( curr_threshold - self.cfg_host[ "hysteresis" ] ) )
 
                 # Compute fan speed
                 if ( temp_average > prev_threshold and temp_average <= curr_threshold and hysteresis_ok ):

@@ -5,7 +5,7 @@ general:
 hosts:
   - name: localhost
     type: local
-    hysterisis: 3
+    hysteresis: 3
     threshold:
       - temperature: 32
         speed: 9
@@ -23,7 +23,7 @@ hosts:
 #      creds:
 #        user: idrac-user
 #        pass: idrac-pass
-#    hysterisis: 3
+#    hysteresis: 3
 #    threshold:
 #      - temperature: 32
 #        speed: 9
