@@ -1,4 +1,4 @@
-# Dell R710 Fan Control Script
+# Dell Fan Control Script
 
 > A temperature-based fan speed controller for Dell servers (tested on an R710, should work with most PowerEdges). Supports both local and remote hosts.
 
@@ -45,8 +45,8 @@
 Clone the repo and run the installation script as root to configure the system or upgrade the already installed controller:
 
 ```text
-git clone https://github.com/nmaggioni/r710-fan-controller.git
-cd r710-fan-controller
+git clone https://github.com/MarcProux/r610-fan-controller.git
+cd r610-fan-controller
 sudo ./install.sh [<installation path>]
 ```
 
@@ -71,28 +71,39 @@ The file is made of two main sections, `general` and `hosts`. The first one cont
 
 Remote hosts must also contain both the `remote_temperature_command` string and the `remote_ipmi_credentials` structure.
 
-| Key | Description |
-| --- | --- |
-| `general`.`debug` | Toggle debug mode _(print ipmitools commands instead of executing them, enable additional logging)_. |
-| `general`.`interval` | How often (in seconds) to read the CPUs' temperatures and adjust the fans' speeds. |
-| `hosts`_[n]_.`hysteresis` | How many degrees (in °C) the CPUs' temperature must go below the threshold to trigger slowing the fans down. _Prevents rapid speed changes, a good starting value can be `3`._ |
-| `hosts`_[n]_.`temperatures` | A list of three upper bounds (in °C) of temperature thresholds. _See [below](#how-it-works) for details._ |
-| `hosts`_[n]_.`speeds` | A list of three speeds (in %) at which fans will run for the correspondent threshold. _See [below](#how-it-works) for details._ |
-| `hosts`_[n]_.`remote_temperature_command` | **For remote hosts only.** A command that will be executed to obtain the temperatures of this remote system. _See [notes](#notes-on-remote-hosts) for details._ |
-| `hosts`_[n]_.`remote_ipmi_credentials`.`host` | **For remote hosts only.** The iDRAC hostname/IP of this remote system. _See [notes](#notes-on-remote-hosts) for details._ |
-| `hosts`_[n]_.`remote_ipmi_credentials`.`username` | **For remote hosts only.** The username used to login to this remote system's iDRAC. _See [notes](#notes-on-remote-hosts) for details._ |
-| `hosts`_[n]_.`remote_ipmi_credentials`.`password` | **For remote hosts only.** The password used to login to this remote system's iDRAC. _See [notes](#notes-on-remote-hosts) for details._ |
+### General
+| Key                | Description                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `general.debug`    | Toggle debug mode _(print ipmitools commands instead of executing them, enable additional logging)_. |
+| `general.interval` | How often (in seconds) to read the CPUs' temperatures and adjust the fans' speeds.                   |
+
+### Hosts
+| Key                                  | Description                                                                            |
+| ------------------------------------ | -------------------------------------------------------------------------------------- |
+| `hosts[n].name`                      | Name of the host to manage                                                             |
+| `hosts[n].type`                      | Kind of host to manage `local` or `remote`                                             |
+| `hosts[n].hysteresis`                | How many degrees (in °C) the CPUs' temperature must go below the threshold to trigger slowing the fans down. _Prevents rapid speed changes, a good starting value can be `3`._ |
+| `hosts[n].threshold[m].temperature ` | Upper bounds temperature                                                               |
+| `hosts[n].threshold[m].speed `       | Speed at which fan will run for the current threshold                                  |
+| `hosts[n].remote_cfg.command`        | **For remote hosts only.** A command that will be executed to obtain the temperatures of this remote system. _See [notes](#notes-on-remote-hosts) for details._ |
+| `hosts[n].remote_cfg.host`           | **For remote hosts only.** The iDRAC hostname/IP of this remote system. _See [notes](#notes-on-remote-hosts) for details._|
+| `hosts[n].remote_cfg.creds.user`     | **For remote hosts only.** The username used to login to this remote system's iDRAC. _See [notes](#notes-on-remote-hosts) for details._ |
+| `hosts[n].remote_cfg.creds.pass`     | **For remote hosts only.** The password used to login to this remote system's iDRAC. _See [notes](#notes-on-remote-hosts) for details._ |
+
 
 ## How it works
 
 Every `general`.`interval` seconds the controller will fetch the temperatures of all the available CPU cores, average them and round the result (referred to as _Tavg_ below). It will then follow this logic to set the fans' speed percentage or engage automatic (hardware managed) control.
 
-| Condition | Fan speed |
-| --- | --- |
-| _Tavg_ ≤ Threshold1 | Threshold1 |
+| Condition                        | Fan speed  |
+| -------------------------------- | ---------- |
+| _Tavg_ ≤ Threshold1              | Threshold1 |
 | Threshold1 < _Tavg_ ≤ Threshold2 | Threshold2 |
 | Threshold2 < _Tavg_ ≤ Threshold3 | Threshold3 |
-| _Tavg_ > Threshold3 | Automatic |
+| ...                              | ...        |
+| _Tavg_ > ThresholdN              | Automatic  |
+
+In case of incoherent value or if the tool can not determine which speed to apply it will fallback to 100% fan speed and will log a warning.
 
 If `hysteresis` is set for a given host, the controller will wait for the temperature to go below _ThresholdN - hysteresis_ temperature. For example: with a Threshold2 of 37°C and an hysteresis of 3°C, the fans won't slow down from Threshold3 to Threshold2 speed until the temperature reaches 34°C.
 
@@ -105,5 +116,6 @@ This controller can monitor the temperature and change the fan speed of remote h
 ## Credits
 
 Major thanks go to [NoLooseEnds's directions](https://github.com/NoLooseEnds/Scripts/tree/master/R710-IPMI-TEMP) for the core commands and [sulaweyo's ruby script](https://github.com/sulaweyo/r710-fan-control) for the idea of automating them.
+Thanks to [nmaggioni](https://github.com/nmaggioni/r710-fan-controller) for the default automation.
 
 **Note:** The key difference of this script, other than handling remote hosts, is that it's based on the temperature of the CPUs' cores and not on the ambient temperature sensor on the server's motherboard. The R710 does not expose CPU temperature over IPMI, but other models do; this script should work with them nonetheless.
