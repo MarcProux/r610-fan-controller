@@ -1,12 +1,17 @@
+
 [Unit]
 Description=Temperature-based fan speed controller
 After=network.target
 
 [Service]
 Type=simple
-ExecStart={TARGETDIR}/venv/bin/python3 -u {TARGETDIR}/fan_control.py
 Restart=always
 RestartSec=15
+
+EnvironmentFile=/etc/default/fan-control
+
+ExecStartPre=test -f ${CONFIG}
+ExecStart={TARGETDIR}/venv/bin/python3 -u {TARGETDIR}/fan_control.py -c ${CONFIG}
 
 [Install]
 WantedBy=multi-user.target

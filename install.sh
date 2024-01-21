@@ -2,21 +2,21 @@
 
 set -e
 
-if [[ "$(whoami)" != "root" ]]; then
+if [[ "$( whoami )" != "root" ]]; then
     echo "You need to run this script as root."
     exit 1
 fi
 
 TARGETDIR="/opt/fan_control"
-if [ ! -z "$1" ]; then
+if [ -n "$1" ]; then
     TARGETDIR="$1"
 fi
 
 echo "*** Installing packaged dependencies..."
-if [ -x "$(command -v apt-get)" ]; then
+if [ -x "$( command -v apt-get )" ]; then
 	apt-get update
 	apt-get install -y build-essential python3-virtualenv python3-dev libsensors4-dev ipmitool
-elif [ -x "$(command -v dnf)" ]; then
+elif [ -x "$( command -v dnf )" ]; then
 	dnf groupinstall -y "Development Tools"
 	dnf install -y python3-virtualenv python3-devel lm_sensors-devel ipmitool
 fi
@@ -43,13 +43,18 @@ deactivate
 echo "*** Copying script and configuration in place..."
 if [ -f "$TARGETDIR/fan_control.yaml" ]; then
     mv "$TARGETDIR/fan_control.yaml"{,.old}
+else
+	cp "fan_control.example.yaml" "${TARGETDIR}/fan_control.yaml"
 fi
-cp fan_control.yaml.example "$TARGETDIR/"
-cp fan_control.py "$TARGETDIR/"
+cp "fan_control.example.yaml" "$TARGETDIR/"
+cp "fan_control.py" "$TARGETDIR/"
 
 echo "*** Creating, (re)starting and enabling SystemD service..."
 cp fan-control.service /etc/systemd/system/fan-control.service
 sed -i "s#{TARGETDIR}#$TARGETDIR#g" /etc/systemd/system/fan-control.service
+cat <<EOF > /etc/default/fan-control
+CONFIG=${TARGETDIR}/fan_control.yml
+EOF
 systemctl daemon-reload
 systemctl restart fan-control
 systemctl enable fan-control

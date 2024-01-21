@@ -1,0 +1,33 @@
+general:
+  debug: false
+  interval: 60
+
+hosts:
+  - name: localhost
+    type: local
+    hysterisis: 3
+    threshold:
+      - temperature: 32
+        speed: 9
+      - temperature: 37
+        speed: 10
+      - temperature: 55
+        speed: 15
+
+#  - name: remote
+#    type: remote
+#    remote_cfg:
+#      # must return a newline-delimited list of floats
+#      command: ssh myuser@myhost 'sysctl -a | grep -E "cpu\.[0-9]+\.temp" | grep -E -o "[0-9]+\.[0-9]+"'
+#      host: some.idrac.domain
+#      creds:
+#        user: idrac-user
+#        pass: idrac-pass
+#    hysterisis: 3
+#    threshold:
+#      - temperature: 32
+#        speed: 9
+#      - temperature: 37
+#        speed: 10
+#      - temperature: 55
+#        speed: 15
