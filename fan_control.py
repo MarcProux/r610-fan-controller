@@ -125,11 +125,20 @@ class FanControl:
             self.cmd += [ "-U", cfg_host[ "remote_cfg" ][ "creds" ][ "user" ] ]
             self.cmd += [ "-P", cfg_host[ "remote_cfg" ][ "creds" ][ "pass" ] ]
 
+    def print( self, lvl: str, msg: str ):
+        match lvl:
+            case "debug":
+                log.pdebug( "[{}] {}".format( self.cfg_host[ "name" ], msg ) )
+            case "info":
+                log.pinfo( "[{}] {}".format( self.cfg_host[ "name" ], msg ) )
+            case "warn":
+                log.pdwarn( "[{}] {}".format( self.cfg_host[ "name" ], msg ) )
+            case "error":
+                log.perror( "[{}] {}".format( self.cfg_host[ "name" ], msg ) )
+
     def execute( self ):
         for t in self.cfg_host[ "threshold" ]:
-            log.pinfo( "[{}] threshold of {}°C => {}%".format(
-                self.cfg_host[ "name" ], t[ "temperature" ], t[ "speed" ]
-            ))
+            self.print( "info", "threshold of {}°C => {}%".format( t[ "temperature" ], t[ "speed" ] ) )
 
         self.run = True
         while self.run:
@@ -145,52 +154,52 @@ class FanControl:
                         for subfeature in core.get_all_subfeatures( feature ):
                             if subfeature.name.endswith( "_input" ):
                                 temps.append( core.get_value( subfeature.number ) )
-
             else:
                 cmd = os.popen( self.cfg_host[ "remote_cfg" ][ "command" ] )
                 temps = list( map( lambda n: float( n ), cmd.read().strip().split( '\n' ) ) )
                 cmd.close()
 
             temp_average = round( sum( temps ) / len( temps ) )
-            log.pinfo( "[{}] average temperature {}°C".format( self.cfg_host[ "name" ], temp_average ) )
+            self.print( "info", "average temperature {}°C".format( temp_average ) )
             for idx, temp in enumerate( temps ):
-                log.pdebug( "[{}] core {} => {}°C".format( self.cfg_host[ "name" ], idx, temp ) )
+                self.print( "debug", "core {} => {}°C".format( idx, temp ) )
 
             need_to_fallback = True
-            prev_threshold = 0
-            curr_threshold = None
+            prev_temp = 0
+            curr_temp = None
             for t in self.cfg_host[ "threshold" ]:
-                curr_threshold = t[ "temperature" ]
+                curr_temp = t[ "temperature" ]
 
                 # Check hysteresis
                 hysteresis_ok = True
-                if self.cfg_host[ "hysteresis" ]:
+                if "hysteresis" in list( self.cfg_host.keys() ) and self.cfg_host[ "hysteresis" ] != 0:
                     if ( self.state[ "speed" ] > t[ "speed" ] or self.state[ "mode" ] == "automatic" ):
-                        hysteresis_ok = ( temp_average <= ( curr_threshold - self.cfg_host[ "hysteresis" ] ) )
+                        hysteresis_ok = ( temp_average <= ( curr_temp - self.cfg_host[ "hysteresis" ] ) )
 
                 # Compute fan speed
-                if ( temp_average > prev_threshold and temp_average <= curr_threshold and hysteresis_ok ):
+                self.print( "debug", "{} < {} <= {} and {}".format( prev_temp, temp_average, curr_temp, hysteresis_ok ) )
+                if ( prev_temp < temp_average <= curr_temp and hysteresis_ok ) or ( temp_average == curr_temp ):
                     self.set_fan_speed( t[ "speed" ] )
                     need_to_fallback = False
                     break
 
                 # Assign previous threshold for next loop
-                prev_threshold = curr_threshold
+                prev_temp = curr_temp
 
             if need_to_fallback:
-                log.pwarn( "[{}] fallback needed for {}°C".format( self.cfg_host[ "name" ], temp_average ) )
-                self.set_fan_speed( 100 )
+                self.print( "warn", "fallback needed for {}°C".format( temp_average ) )
+                self.set_fan_control( "automatic" )
 
             time.sleep( self.cfg_gen[ "interval" ] )
 
     def stop( self ):
-        log.pinfo( "stopping execution" )
+        self.print( "info", "stopping execution" )
         self.run = False
         self.set_fan_control( "automatic" )
 
     def send_cmd( self, args: list ):
         cmd = self.cmd + ( args.split( ' ' ) )
-        log.pdebug( "[{}] command: {}".format( self.cfg_host[ "name" ], cmd ) )
+        self.print( "debug", "command: {}".format( cmd ) )
 
         try:
             subprocess.check_output( cmd, timeout=15 )
@@ -212,7 +221,7 @@ class FanControl:
             self.send_cmd( "raw 0x30 0x30 0x01 0x01" )
             self.state[ "speed" ] = 0
 
-        log.pinfo( "[{}] setting fan mode to {}".format( self.cfg_host[ "name" ], mode ) )
+        self.print( "info", "setting fan mode to {}".format( mode ) )
         self.state[ "mode" ] = mode
 
     def set_fan_speed( self, speed: int ):
@@ -225,7 +234,7 @@ class FanControl:
         if self.state[ "speed" ] == speed:
             return
 
-        log.pinfo( "[{}] setting fan speed to {}%".format( self.cfg_host[ "name" ], speed ) )
+        self.print( "info", "setting fan speed to {}%".format( speed ) )
         self.send_cmd( "raw 0x30 0x30 0x02 0xff {}".format( speed_hex ) )
         self.state[ "speed" ] = speed
 
